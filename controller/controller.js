@@ -6,6 +6,7 @@ const Token = require("../model/token");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const passwordComplexity = require("joi-password-complexity");
 
 const Base_Url = "http://www.google.com";
 
@@ -89,7 +90,6 @@ async function password_reset_link(req, res) {
     }
 
     const link = `${process.env.PORT}/password-reset/${user._id}/${token.token}/click the link to reset the password ${Base_Url}`;
-    // const link1 = ``;
     await sendEmail(user.email, "Password reset", link);
 
     res.send("password reset link sent to your email account");
@@ -102,7 +102,9 @@ async function password_reset_link(req, res) {
 //password reset
 async function password_reset(req, res) {
   try {
-    const schema = Joi.object({ password: Joi.string().required() });
+    const schema = Joi.object({
+      password: passwordComplexity().required().label("Password"),
+    });
 
     const { error } = schema.validate(req.body);
     if (error) return res.status(400).send(error.details[0].message);
@@ -116,11 +118,22 @@ async function password_reset(req, res) {
     });
     if (!token) return res.status(400).send("Invalid link or expired");
 
-    user.password = req.body.password;
+    if (!user.verified) user.verified = true;
+
+    const salt = await bcrypt.genSalt(Number(process.env.SALT));
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
+    user.password = hashedPassword;
     await user.save();
+    await token.deleteOne();
+
+    res.status(200).send({ message: "Password reset successfully" });
+
+    // user.password = req.body.password;
+    // await user.save();
     // await token.delete();
 
-    res.send("password reset sucessfully.");
+    // res.send("password reset sucessfully.");
   } catch (error) {
     res.send(error, "An error occured");
     console.log(error);
