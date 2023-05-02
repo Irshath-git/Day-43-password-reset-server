@@ -8,7 +8,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const passwordComplexity = require("joi-password-complexity");
 
-const Base_Url = "http://www.google.com";
+const Base_Url = "https://password-reset-cli.netlify.app/changepassword";
 
 //register user
 async function register_user(req, res) {
